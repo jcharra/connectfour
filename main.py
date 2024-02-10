@@ -260,7 +260,7 @@ class App(tk.Tk):
         self.canvas.create_rectangle(START_FIELD_X,
                                      START_FIELD_Y,
                                      START_FIELD_X + BOARD_WIDTH,
-                                     START_FIELD_Y + BOARD_HEIGHT + 2,  # fix rounding error
+                                     START_FIELD_Y + BOARD_HEIGHT,
                                      outline=BOARD_COLOR,
                                      width=10)
 
