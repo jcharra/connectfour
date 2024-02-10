@@ -10,12 +10,14 @@ FIELD_WIDTH = BOARD_WIDTH / 7
 FIELD_HEIGHT = math.ceil(BOARD_HEIGHT / 6)
 START_FIELD_X = (CANVAS_WIDTH - BOARD_WIDTH) // 2
 START_FIELD_Y = CANVAS_HEIGHT - BOARD_HEIGHT
+PENDING_PIECE_START_Y = START_FIELD_Y - 1.2 * FIELD_HEIGHT
 HOLE_PADDING = 8
 BACKGROUND = "#fab696"
 BOARD_COLOR = "#3333ff"
 BAR_THICKNESS = 4
 BAR_COLOR = "#0000dd"
 FONT = ("Helvetica", 48, "bold")
+DROP_DELAY = 10
 
 
 class Color(Enum):
@@ -48,19 +50,50 @@ class App(tk.Tk):
         self.quitButton.grid(row=0, column=1, ipadx=10, ipady=10)
         self.buttonFrame.pack(expand=True)
 
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
-
-        self.moving_piece = {}
-        self.current_player = Color.RED
         self.initialize_game()
 
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<Motion>", self.on_mouse_move)
         self.bind("<s>", lambda e: self.simulation_modus())
+
+    def on_mouse_move(self, event):
+        if self.moving_piece or self.winner:
+            return
+
+        if event.x > START_FIELD_X + FIELD_WIDTH * 6:
+            column_index = 6
+        elif event.x < START_FIELD_X:
+            column_index = 0
+        else:
+            column_index = (event.x - START_FIELD_X) // FIELD_WIDTH
+
+        if column_index == self.pending_piece_column:
+            # No change
+            return
+
+        self.pending_piece_column = column_index
+        new_x = START_FIELD_X + FIELD_WIDTH * column_index
+        self.canvas.coords(self.pending_piece,
+                           new_x,
+                           PENDING_PIECE_START_Y, new_x + FIELD_WIDTH,
+                           PENDING_PIECE_START_Y + FIELD_HEIGHT)
 
     def initialize_game(self):
         self.reset_fields()
         self.canvas.delete("all")
         self.winner = {}
+        self.current_player = Color.RED
+        self.pending_piece_column = 3
+        self.pending_piece = self.generate_next_piece()
+        self.moving_piece = None
         self.render_initial_state()
+
+    def generate_next_piece(self):
+        init_x = START_FIELD_X + self.pending_piece_column * FIELD_WIDTH
+        oval = self.canvas.create_oval(init_x, PENDING_PIECE_START_Y, init_x + FIELD_WIDTH,
+                                       PENDING_PIECE_START_Y + FIELD_HEIGHT, fill=COLOR[self.current_player])
+        self.canvas.tag_lower(oval)
+        return oval
 
     def reset_fields(self):
         self.fields = [[0] * 7, [0] * 7,
@@ -84,14 +117,13 @@ class App(tk.Tk):
             # Column already filled
             return
 
+        adjusted_x = START_FIELD_X + FIELD_WIDTH * column_index
+        self.canvas.coords(self.pending_piece, adjusted_x, PENDING_PIECE_START_Y,
+                           adjusted_x + FIELD_WIDTH, PENDING_PIECE_START_Y + FIELD_HEIGHT)
         destination_y = START_FIELD_Y + \
             (6 - pieces_in_column - 1) * FIELD_HEIGHT
-        piece_x = START_FIELD_X + FIELD_WIDTH * column_index
-        oval = self.canvas.create_oval(
-            piece_x, 0, piece_x + FIELD_WIDTH, FIELD_HEIGHT, fill=COLOR[self.current_player])
-        self.canvas.tag_lower(oval)
         self.moving_piece = {
-            "ref": oval,
+            "ref": self.pending_piece,
             "destination_y": destination_y,
             "coords": (5 - pieces_in_column, column_index)
         }
@@ -103,7 +135,7 @@ class App(tk.Tk):
 
         ref = self.moving_piece["ref"]
         self.canvas.move(ref, 0, 50)
-        self.after(10, self.drop_piece)
+        self.after(DROP_DELAY, self.drop_piece)
         if self.canvas.coords(ref)[1] > self.moving_piece["destination_y"]:
             dest_x, dest_y = self.canvas.coords(
                 ref)[0], self.moving_piece["destination_y"]
@@ -119,6 +151,10 @@ class App(tk.Tk):
         self.winner = self.check_winner()
         if self.winner:
             self.visualize_winner()
+        elif self.board_full():
+            self.draw()
+        else:
+            self.pending_piece = self.generate_next_piece()
 
     def find_pieces_in_column(self, column_index):
         return sum(bool(row[column_index]) for row in self.fields)
@@ -166,6 +202,17 @@ class App(tk.Tk):
                 return True
         return False
 
+    def board_full(self):
+        for row in self.fields:
+            if not all(x for x in row):
+                return False
+        return True
+
+    def draw(self):
+        self.winner = "draw"
+        self.canvas.create_text(CANVAS_WIDTH / 2, 50, text="DRAW",
+                                font=FONT, fill="gray", anchor="center")
+
     def is_same_color(self, fields):
         first = fields[0]
         if first == 0:
@@ -207,6 +254,7 @@ class App(tk.Tk):
             [0, 1, 2, 3, 0, 0, 0, 1, 0, 1, 1, 2, 2, 4, 3]))
         self.bind("<f>", lambda e: self.simulate(
             [3, 3, 3, 2, 3, 2, 2, 1, 1, 4, 0]))
+        self.bind("<q>", lambda e: self.draw())
 
     def render_initial_state(self):
         self.canvas.create_rectangle(START_FIELD_X,
