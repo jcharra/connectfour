@@ -1,7 +1,6 @@
 import math
 import tkinter as tk
 from tkinter import messagebox
-from enum import Enum
 
 CANVAS_WIDTH, CANVAS_HEIGHT = 800, 600
 BOARD_WIDTH = 560
@@ -20,15 +19,12 @@ FONT = ("Helvetica", 48, "bold")
 DROP_DELAY = 10
 
 
-class Color(Enum):
-    NONE = 0
-    RED = 1
-    YELLOW = 2
-
+RED = 1
+YELLOW = 2
 
 COLOR = {
-    Color.RED: "red",
-    Color.YELLOW: "yellow"
+    RED: "red",
+    YELLOW: "yellow"
 }
 
 
@@ -50,11 +46,10 @@ class App(tk.Tk):
         self.quitButton.grid(row=0, column=1, ipadx=10, ipady=10)
         self.buttonFrame.pack(expand=True)
 
-        self.initialize_game()
-
         self.canvas.bind("<Button-1>", self.on_canvas_click)
         self.canvas.bind("<Motion>", self.on_mouse_move)
-        self.bind("<s>", lambda e: self.simulation_modus())
+
+        self.initialize_game()
 
     def on_mouse_move(self, event):
         if self.moving_piece or self.winner:
@@ -82,7 +77,7 @@ class App(tk.Tk):
         self.reset_fields()
         self.canvas.delete("all")
         self.winner = {}
-        self.current_player = Color.RED
+        self.current_player = RED
         self.pending_piece_column = 3
         self.pending_piece = self.generate_next_piece()
         self.moving_piece = None
@@ -90,8 +85,11 @@ class App(tk.Tk):
 
     def generate_next_piece(self):
         init_x = START_FIELD_X + self.pending_piece_column * FIELD_WIDTH
-        oval = self.canvas.create_oval(init_x, PENDING_PIECE_START_Y, init_x + FIELD_WIDTH,
-                                       PENDING_PIECE_START_Y + FIELD_HEIGHT, fill=COLOR[self.current_player])
+        oval = self.canvas.create_oval(init_x,
+                                       PENDING_PIECE_START_Y,
+                                       init_x + FIELD_WIDTH,
+                                       PENDING_PIECE_START_Y + FIELD_HEIGHT,
+                                       fill=COLOR[self.current_player])
         self.canvas.tag_lower(oval)
         return oval
 
@@ -118,8 +116,12 @@ class App(tk.Tk):
             return
 
         adjusted_x = START_FIELD_X + FIELD_WIDTH * column_index
-        self.canvas.coords(self.pending_piece, adjusted_x, PENDING_PIECE_START_Y,
-                           adjusted_x + FIELD_WIDTH, PENDING_PIECE_START_Y + FIELD_HEIGHT)
+        self.canvas.coords(self.pending_piece,
+                           adjusted_x,
+                           PENDING_PIECE_START_Y,
+                           adjusted_x + FIELD_WIDTH,
+                           PENDING_PIECE_START_Y + FIELD_HEIGHT)
+
         destination_y = START_FIELD_Y + \
             (6 - pieces_in_column - 1) * FIELD_HEIGHT
         self.moving_piece = {
@@ -147,7 +149,7 @@ class App(tk.Tk):
         row, col = self.moving_piece["coords"]
         self.fields[row][col] = self.current_player
         self.moving_piece = {}
-        self.current_player = Color.RED if self.current_player == Color.YELLOW else Color.YELLOW
+        self.current_player = RED if self.current_player == YELLOW else YELLOW
         self.winner = self.check_winner()
         if self.winner:
             self.visualize_winner()
@@ -224,9 +226,8 @@ class App(tk.Tk):
 
     def on_quit(self):
         result = messagebox.askyesno("Confirmation", "Really quit?")
-        if not result:
-            return
-        self.destroy()
+        if result:
+            self.destroy()
 
     def on_newGame(self):
         if self.moves_made() and not self.winner:
@@ -236,25 +237,6 @@ class App(tk.Tk):
                 return
 
         self.initialize_game()
-
-    def simulate_seq(self, sequence):
-        if not sequence:
-            return
-        self.execute_move(sequence[0])
-        self.after(300, lambda: self.simulate_seq(sequence[1:]))
-
-    def simulate(self, sequence):
-        self.initialize_game()
-        self.simulate_seq(sequence)
-
-    def simulation_modus(self):
-        self.bind("<r>", lambda e: self.simulate([0, 0, 1, 1, 2, 2, 3]))
-        self.bind("<c>", lambda e: self.simulate([0, 1, 0, 1, 0, 1, 0]))
-        self.bind("<d>", lambda e: self.simulate(
-            [0, 1, 2, 3, 0, 0, 0, 1, 0, 1, 1, 2, 2, 4, 3]))
-        self.bind("<f>", lambda e: self.simulate(
-            [3, 3, 3, 2, 3, 2, 2, 1, 1, 4, 0]))
-        self.bind("<q>", lambda e: self.draw())
 
     def render_initial_state(self):
         self.canvas.create_rectangle(START_FIELD_X,
@@ -293,5 +275,6 @@ class App(tk.Tk):
             self.canvas.tag_lower(r)
 
 
-app = App()
-app.mainloop()
+if __name__ == '__main__':
+    app = App()
+    app.mainloop()
